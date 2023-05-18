@@ -60,7 +60,7 @@ loss_fn = nn.CrossEntropyLoss()
 if __name__ == "__main__":
     transform = transforms.Compose(
         [
-            T.Resize(228),
+            T.Resize(224),
             transforms.ToTensor(),
             transforms.Normalize([0.485,0.456,0.406],[0.229,0.224,0.225])
         ]
@@ -87,9 +87,10 @@ if __name__ == "__main__":
     opt = optim.Adam(net.parameters(), lr=3e-4)
 
     loss_arr = []
-    plot_range = [i for i in range(60)]
+    plot_range = [i for i in range(30)]
     # train
-    for epoch in range(20):
+    for epoch in range(30):
+        print(f'running batch #{epoch+1}')
         running_loss = 0.0
         for i, data in enumerate(trainloader, 0):
             inputs, labels = data
@@ -101,19 +102,17 @@ if __name__ == "__main__":
             loss.backward()
             opt.step()
 
-            running_loss += loss.item()
-            if i % 10 == 9:
-                print(f'[ {epoch + 1}, {i + 1:5d}] loss: {running_loss / 10:.3f}')
-                loss_arr.append(running_loss/10)
-                running_loss = 0.0
         tp = 0
         fp = 0
         tn = 0
         fn = 0
+        loss_sum = 0.0
+        #validation
         for i, data in enumerate(valloader, 0):
             inputs, labels = data
             outputs = net(inputs)
             outputs = nn.functional.softmax(outputs, dim=1)
+            loss = loss_fn(outputs, labels)
             outputs = outputs.argmax(1)
             labels = labels.argmax(1)
             for i in range(len(labels)):
@@ -127,11 +126,14 @@ if __name__ == "__main__":
                         fn += 1
                     else:
                         fp += 1
+            loss_sum += loss.item()
+
         accuracy = (tp+tn)/(tp+tn+fp+fn)
         precision = tp/(tp+fp)
         recall = tp/(tp+fn)
         f1 = (2*precision*recall)/(precision+recall)
         print(f'acc = {accuracy:.3f}, prec = {precision:.3f}, rec = {recall:.3f}, f1 = {f1:.3f}')
+        loss_arr.append(loss_sum/len(valloader))
     
     plt.plot(plot_range, loss_arr)
     plt.show()
